@@ -3,15 +3,25 @@ package com.lootNotifier;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.events.GameObjectSpawned;
+import net.runelite.api.*;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ItemSpawned;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.NpcLootReceived;
+import net.runelite.client.game.ItemClient;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.http.api.item.ItemPrice;
+import net.runelite.client.game.ItemManager;
+
+import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 @PluginDescriptor(
@@ -24,6 +34,11 @@ public class lootNotifierPlugin extends Plugin
 
 	@Inject
 	private lootNotifierConfig config;
+
+	//Item manager handles all the items, getting id's and such
+	@Inject
+	private ItemManager itemManager;
+
 
 	@Override
 	protected void startUp() throws Exception
@@ -50,6 +65,35 @@ public class lootNotifierPlugin extends Plugin
 			log.info(""+client.getWorld());
 		}
 	}
+
+	// This will handle calculating the value of the drops
+	@Subscribe
+	public void onNpcLootReceived(NpcLootReceived npcLootReceived)
+	{
+		//Npc gives us the npc that we killed, used for keeping the name
+		NPC npc = npcLootReceived.getNpc();
+		// Collection stores all of our drops
+		Collection<ItemStack> items = npcLootReceived.getItems();
+		List<Integer> val = new ArrayList<>();
+		// Itterate thru the items one by one
+		for (ItemStack item : items)
+		{
+			//Get the id, find the price and add it to our list
+			int id = item.getId();
+			int totalVal = itemManager.getItemPriceWithSource(id, true);
+			val.add(totalVal);
+		}
+		//This value keeps track of the total pricecheck
+		int valueToPrint = 0;
+		//Loop through our list to add the total sum
+		for (int i = 0; i < val.size(); i++) {
+			valueToPrint = valueToPrint + val.get(i);
+		}
+		//Print the total sum to the players
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE,"", "You killed: "+ npc.getName() + " for a value of: " + valueToPrint, null);
+	}
+
+
 
 	@Provides
 	lootNotifierConfig provideConfig(ConfigManager configManager)
