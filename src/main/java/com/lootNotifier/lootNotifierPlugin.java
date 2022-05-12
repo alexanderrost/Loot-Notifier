@@ -4,6 +4,8 @@ import com.google.inject.Provides;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemSpawned;
@@ -12,6 +14,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.NpcLootReceived;
+import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.game.ItemClient;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
@@ -29,6 +32,10 @@ import java.util.concurrent.ScheduledExecutorService;
 )
 public class lootNotifierPlugin extends Plugin
 {
+	private static final String recievedDrop = "Valuable drop:";
+	private int mostVal = 0;
+	private int itemId = 0;
+
 	@Inject
 	private Client client;
 
@@ -83,14 +90,38 @@ public class lootNotifierPlugin extends Plugin
 			int totalVal = itemManager.getItemPriceWithSource(id, true);
 			val.add(totalVal);
 		}
-		//This value keeps track of the total pricecheck
-		int valueToPrint = 0;
-		//Loop through our list to add the total sum
-		for (int i = 0; i < val.size(); i++) {
-			valueToPrint = valueToPrint + val.get(i);
-		}
+
 		//Print the total sum to the players
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE,"", "You killed: "+ npc.getName() + " for a value of: " + valueToPrint, null);
+	}
+
+	@Subscribe
+	//TODO Fix drop
+	public void	onChatMessage(ChatMessage msgFromChat)
+	{
+		String chatMessage = msgFromChat.getMessage();
+		log.info(""+chatMessage);
+		log.info(""+msgFromChat.getType());
+		if(msgFromChat.getType() != ChatMessageType.PUBLICCHAT
+		&& msgFromChat.getType() != ChatMessageType.SPAM
+		&& msgFromChat.getType() != ChatMessageType.TRADE
+		&& msgFromChat.getType() != ChatMessageType.FRIENDSCHATNOTIFICATION)
+		{
+			return;
+		}
+
+		if (chatMessage.equals(recievedDrop) && mostVal >= 200)
+		{
+			log.info("You got a valuable drop");
+			String itemName = droppedItemName(chatMessage);
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "","DROP:" + itemName + " value: " + mostVal, null);
+		}
+	}
+
+	public String droppedItemName(String msg)
+	{
+		String[] str = msg.split(":");
+		return str[1];
 	}
 
 
