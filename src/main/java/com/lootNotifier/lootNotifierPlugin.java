@@ -90,7 +90,12 @@ public class lootNotifierPlugin extends Plugin
 			int totalVal = itemManager.getItemPriceWithSource(id, true);
 			val.add(totalVal);
 		}
-
+		//This value keeps track of the total pricecheck
+		int valueToPrint = 0;
+		//Loop through our list to add the total sum
+		for (int i = 0; i < val.size(); i++) {
+			valueToPrint = valueToPrint + val.get(i);
+		}
 		//Print the total sum to the players
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE,"", "You killed: "+ npc.getName() + " for a value of: " + valueToPrint, null);
 	}
